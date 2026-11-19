@@ -116,6 +116,8 @@ function drawSeq(ctx,W,H,seq,{x1,y0,w,s,u,F}){
 }
 
 
+const CAMNM={A:'Center field',E:'RHH Open',F:'LHH Open'};
+addEventListener('hashchange',()=>location.reload());
 const q=new URLSearchParams(location.hash.slice(1));
 const base=q.get('v')||'', ttl=q.get('t')||'Pitch video', sub=q.get('s')||'';
 let ang=(q.get('a')||'A').toUpperCase(), pitch=null, show=true;
@@ -127,11 +129,11 @@ const url=a=>base+a+'.mp4';
 function draw(){ if(!v.videoWidth){ return; } c.width=v.videoWidth; c.height=v.videoHeight; const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height);
   if(show&&pitch){ try{ drawPanel(g,c.width,c.height,pitch); }catch(e){} } }
 function play(a){ ang=a; const t=v.currentTime||0; [...angs.children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.a===a));
-  msg.innerHTML=`Camera ${a}${a==='A'?' (center field)':''}. If the video doesn't start, <a href="${url(a)}" target="_blank" rel="noopener">open the clip directly</a>.`;
+  msg.innerHTML=`Camera ${a}${CAMNM[a]?' ('+CAMNM[a]+')':''}. If the video doesn't start, <a href="${url(a)}" target="_blank" rel="noopener">open the clip directly</a>.`;
   v.src=url(a); v.addEventListener('loadedmetadata',()=>{ if(t) try{ v.currentTime=Math.min(t,v.duration||t); }catch(_){} draw(); },{once:true}); v.play().catch(()=>{});
   history.replaceState(null,'',location.pathname+'#'+(()=>{ q.set('a',a); return q.toString(); })()); }
 if(!ok){ msg.textContent='This link is missing its video. Open the pitch again from the site.'; }
-else{ angs.innerHTML='ABCDEF'.split('').map(a=>`<button type="button" data-a="${a}" title="Camera ${a}${a==='A'?' (center field)':''}">${a}</button>`).join('');
+else{ angs.innerHTML='ABCDEF'.split('').map(a=>`<button type="button" data-a="${a}" title="Camera ${a}${CAMNM[a]?' ('+CAMNM[a]+')':''}">${a}</button>`).join('');
   angs.onclick=e=>{ const b=e.target.closest('button'); if(b) play(b.dataset.a); };
   v.addEventListener('loadedmetadata',draw); window.addEventListener('resize',draw);
   document.getElementById('tog').onclick=e=>{ show=!show; e.target.textContent=show?'Overlay on':'Overlay off'; draw(); };
