@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LSU Pitch Video</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f0b18;--ink:#f1eef8;--ink2:#b5aecb;--line:#352e50;--purple:#7a4fc0;--gold:#FDD023}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Barlow,system-ui,sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:14px 16px 24px}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:10px}
+h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.02em}
+.sub{color:var(--ink2);font-size:14px}
+.angs{display:flex;gap:6px;margin-left:auto}
+.angs button{font:700 15px Barlow,sans-serif;min-width:38px;height:34px;border-radius:6px;border:1px solid var(--line);background:#1d1830;color:var(--ink2);cursor:pointer}
+.angs button[aria-pressed=true]{background:#461D7C;border-color:#461D7C;color:#fff;box-shadow:inset 0 -3px 0 var(--gold)}
+.stage{position:relative;line-height:0;background:#000;border-radius:6px;overflow:hidden}
+video{width:100%;display:block;max-height:calc(100vh - 120px)}
+canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.msg{margin-top:10px;color:var(--ink2);font-size:14px}.msg a{color:#c9b3ff}
+.tog{font:600 13px Barlow,sans-serif;background:none;border:1px solid var(--line);color:var(--ink2);border-radius:6px;padding:6px 10px;cursor:pointer}
+</style></head><body><div class="wrap">
+<div class="top"><div><h1 id="ttl">Pitch video</h1><div class="sub" id="sub"></div></div>
+<div class="angs" id="angs"></div><button class="tog" id="tog" type="button" title="Show or hide the pitch panel">Overlay on</button></div>
+<div class="stage"><video id="v" controls playsinline autoplay muted></video><canvas id="c"></canvas></div>
+<p class="msg" id="msg"></p>
+</div>
+<script>
+/* LSU pitch video player (2026-11-18): opened from the LSU Tigers Hitting Lab camera buttons. Everything comes from the link (after #):
+   v = BATS clip address without the angle letter, a = camera A-F, p = the pitch panel (base64 JSON), t / s = title lines.
+   Plays the BATS clip straight from BATS and draws the same pitch panel as the site's Video Overlay on top. Nothing is stored. */
+const PLATE_HALF=17/2/12, BALL_R=1.45/12, Z_BOT=1.5, Z_TOP=3.5;
+const STYLE={fastball:['#E63C3C'],fourseamfastball:['#E63C3C'],'four-seam':['#E63C3C'],fa:['#E63C3C'],ff:['#E63C3C'],
+  sinker:['#F58C28'],twoseamfastball:['#F58C28'],si:['#F58C28'],cutter:['#961E3C'],fc:['#961E3C'],
+  slider:['#F0C828'],sl:['#F0C828'],sweeper:['#C8E614'],st:['#C8E614'],curveball:['#28A0E6'],cu:['#28A0E6'],
+  knucklecurve:['#28A0E6'],kc:['#28A0E6'],slurve:['#28B4C8'],changeup:['#3CC846'],ch:['#3CC846'],
+  splitter:['#3CC896'],fs:['#3CC896'],knuckleball:['#C8C8C8']};
+const NAMES={sv:'Slurve',slurve:'Slurve',fa:'Fastball',ff:'Fastball',fourseamfastball:'Fastball','four-seam':'Fastball',si:'Sinker',twoseamfastball:'Sinker',
+  fc:'Cutter',sl:'Slider',st:'Sweeper',cu:'Curveball',kc:'Knuckle Curve',ch:'Changeup',changeup:'Changeup',fs:'Splitter'};
+const key=t=>String(t||'').toLowerCase().replace(/[\s_]/g,'');
+const ptColorOf=t=>(STYLE[key(t)]||['#C8C8C8'])[0];
+const ptNameOf=t=>{ const k=key(t); if(NAMES[k]) return NAMES[k]; const s=String(t||'').trim(); return s?s.replace(/([a-z])([A-Z])/g,'$1 $2'):'Unknown'; };
+const f1=v=>(v===null||v===undefined||isNaN(v))?null:(+v).toFixed(1);
+
+/* p: {velo, type, count, result, ivb, hb, ev (balls in play only), side (ft, + = 1B side; TrackMan's PlateLocSide is the opposite sign, TruMedia x is converted to this), height (ft),
+      zone: optional {half, bot, top} in ft = the hitter's own zone; standard 17 in x 1.5-3.5 ft when absent} */
+function drawPanel(ctx,W,H,p,scale=0.95){
+  const u=H/720, s=scale*u, F='"Barlow","Helvetica Neue",Arial,sans-serif';
+  const white='#F5F5F5', grey='#C8C8C8', sepc='#969696';
+  const row2=[[ptNameOf(p.type),white]], row3=[];
+  if(f1(p.ivb)) row2.push([f1(p.ivb)+' IVB',grey]); if(f1(p.hb)) row2.push([f1(p.hb)+' HB',grey]);
+  if(p.count) row3.push([p.count,white]); if(p.result) row3.push([p.result,grey]); if(f1(p.ev)) row3.push([f1(p.ev)+' EV',grey]);
+  const fs=17*s, SEP=' | ';
+  ctx.font=`500 ${fs}px ${F}`; const sepW=ctx.measureText(SEP).width;
+  const rowW=r=>r.reduce((a,[t])=>a+ctx.measureText(t).width,0)+sepW*Math.max(0,r.length-1);
+  const pw=Math.round(Math.max(200*s,Math.max(rowW(row2),rowW(row3))+28*s)), ph=Math.round(272*s);
+  const margin=Math.round(18*u), x0=W-pw-margin, y0=H-ph-margin;
+  ctx.save();
+  ctx.fillStyle='rgba(20,20,20,0.62)'; ctx.fillRect(x0,y0,pw,ph);
+  // strike zone area (feet -> px), pitcher's view
+  const areaTop=y0+84*s, areaH=ph-92*s, wx0=-1.5, wx1=1.5, wy0=0.8, wy1=4.1;
+  const ppf=Math.min((pw-24*s)/(wx1-wx0), areaH/(wy1-wy0)), cx=x0+pw/2, baseY=areaTop+areaH;
+  const X=fx=>cx+fx*ppf, Y=fy=>baseY-(fy-wy0)*ppf;
+  const Z=p.zone||{half:PLATE_HALF,bot:Z_BOT,top:Z_TOP};
+  const zl=X(-Z.half), zr=X(Z.half), zt=Y(Z.top), zb=Y(Z.bot);
+  ctx.strokeStyle='#6E6E6E'; ctx.lineWidth=1;
+  for(const k of [1,2]){ const gx=zl+(zr-zl)*k/3, gy=zt+(zb-zt)*k/3;
+    ctx.beginPath(); ctx.moveTo(gx,zt); ctx.lineTo(gx,zb); ctx.moveTo(zl,gy); ctx.lineTo(zr,gy); ctx.stroke(); }
+  ctx.strokeStyle=white; ctx.lineWidth=Math.max(1,Math.round(1.3*s)); ctx.strokeRect(zl,zt,zr-zl,zb-zt);
+  const nudge=6*s; ctx.fillStyle='#C8C8C8'; ctx.beginPath();
+  [[-PLATE_HALF,wy0+0.1],[PLATE_HALF,wy0+0.1],[PLATE_HALF,wy0+0.23],[0,wy0+0.35],[-PLATE_HALF,wy0+0.23]]
+    .forEach(([a,b],i)=>i?ctx.lineTo(X(a),Y(b)+nudge):ctx.moveTo(X(a),Y(b)+nudge)); ctx.closePath(); ctx.fill();
+  // zone top / bottom height in inches beside the zone, like the TrackMan screen (user, 2026-10-23); drawn before the ball so the ball sits in front of them
+  ctx.font=`500 ${12*s}px ${F}`; ctx.fillStyle='#DCDCDC'; ctx.textBaseline='middle';
+  const zx=zr+6*s; ctx.fillText((Z.top*12).toFixed(2)+'"',zx,zt); ctx.fillText((Z.bot*12).toFixed(2)+'"',zx,zb);
+  ctx.textBaseline='alphabetic';
+  // the pitch (high pitches may run up behind the text)
+  if(p.side!==null&&p.side!==undefined&&!isNaN(p.side)&&p.height!==null&&p.height!==undefined&&!isNaN(p.height)){
+    const fx=Math.max(wx0+0.1,Math.min(wx1-0.1,-p.side));
+    const fyMax=wy0+(baseY-(y0+10*s))/ppf, fy=Math.max(wy0+0.1,Math.min(fyMax,p.height));
+    const px=X(fx), py=Y(fy), r=Math.max(4,BALL_R*ppf*1.3*0.9*0.95);   // ball 10% smaller, then 5% more (user, 2026-10-23)
+    ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(px,py,r+2,0,7); ctx.fill();
+    ctx.fillStyle=ptColorOf(p.type); ctx.beginPath(); ctx.arc(px,py,r,0,7); ctx.fill();
+    ctx.strokeStyle=white; ctx.lineWidth=1; ctx.stroke();
+  }
+  // text last
+  ctx.textBaseline='alphabetic';
+  const velo=f1(p.velo)||"--"; ctx.font=`600 ${40*s}px ${F}`; ctx.fillStyle=white;
+  ctx.fillText(velo,x0+12*s,y0+44*s); const vw=ctx.measureText(velo).width;
+  ctx.font=`500 ${15*s}px ${F}`; ctx.fillStyle='#B4B4B4'; ctx.fillText('MPH',x0+18*s+vw,y0+44*s);
+  const drawRow=(r,y)=>{ let x=x0+14*s; r.forEach(([t,c],i)=>{ ctx.font=`${i===0?600:500} ${fs}px ${F}`;
+      if(i){ ctx.fillStyle=sepc; ctx.font=`500 ${fs}px ${F}`; ctx.fillText(SEP,x,y); x+=sepW; ctx.font=`500 ${fs}px ${F}`; }
+      ctx.fillStyle=c; ctx.fillText(t,x,y); x+=ctx.measureText(t).width; }); };
+  drawRow(row2,y0+70*s); drawRow(row3,y0+94*s);
+  ctx.restore();
+  if(p.seq&&p.seq.length) drawSeq(ctx,W,H,p.seq,{x1:x0+pw,y0,w:pw,s,u,F});
+}
+/* Pitch sequence box above the panel (user, 2026-11-10, from a broadcast "PITCH SEQUENCE" graphic): a dark header bar with a
+   colored rule under it, then "1. CURVEBALL      81 MPH" rows. Right edge lines up with the panel; rows shrink to fit the space. */
+function drawSeq(ctx,W,H,seq,{x1,y0,w,s,u,F}){
+  const gap=8*s, top=Math.round(14*u), avail=y0-gap-top, headH=26*s;
+  let rowH=22*s; if(headH+seq.length*rowH+8*s>avail) rowH=Math.max(12*s,(avail-headH-8*s)/seq.length);
+  const k=rowH/(22*s), fs=15*s*Math.min(1,k*1.05), ms=9*s*Math.min(1,k*1.05);
+  ctx.save(); ctx.textBaseline='middle';
+  ctx.font=`700 ${fs}px ${F}`; const nameW=Math.max(...seq.map((q,i)=>ctx.measureText(`${i+1}. ${String(ptNameOf(q.type)||'--').toUpperCase()}`).width));
+  const bw=Math.round(Math.max(w,nameW+70*s+24*s)), bh=Math.round(headH+seq.length*rowH+8*s), bx=x1-bw, by=Math.round(y0-gap-bh);
+  ctx.fillStyle='rgba(16,16,16,0.68)'; ctx.fillRect(bx,by,bw,bh);   // same see-through grey as the panel (20,20,20,.62), a touch darker (user, 2026-11-10)
+  ctx.fillStyle='#461D7C'; ctx.fillRect(bx,by,bw,headH);                // LSU purple header
+  ctx.fillStyle='#FDD023'; ctx.fillRect(bx,by+headH-2*s,bw,2*s);         // gold rule
+  ctx.fillStyle='#FFFFFF'; ctx.font=`700 ${15*s}px ${F}`; ctx.textAlign='center'; ctx.fillText('PITCH SEQUENCE',bx+bw/2,by+headH/2);
+  ctx.textAlign='left';
+  seq.forEach((q,i)=>{ const y=by+headH+4*s+rowH*(i+0.5);
+    ctx.font=`700 ${fs}px ${F}`; ctx.fillStyle='#F5F5F5'; ctx.fillText(`${i+1}. ${String(ptNameOf(q.type)||'--').toUpperCase()}`,bx+12*s,y);
+    ctx.font=`500 ${ms}px ${F}`; const mw=ctx.measureText('MPH').width; ctx.fillStyle='#C8C8C8'; ctx.fillText('MPH',bx+bw-10*s-mw,y+1*s);
+    const v=q.velo===null||q.velo===undefined||isNaN(q.velo)?'--':String(Math.round(q.velo));
+    ctx.font=`700 ${fs}px ${F}`; ctx.fillStyle='#F5F5F5'; ctx.textAlign='right'; ctx.fillText(v,bx+bw-16*s-mw,y); ctx.textAlign='left'; });
+  ctx.restore();
+}
+
+
+const q=new URLSearchParams(location.hash.slice(1));
+const base=q.get('v')||'', ttl=q.get('t')||'Pitch video', sub=q.get('s')||'';
+let ang=(q.get('a')||'A').toUpperCase(), pitch=null, show=true;
+try{ const b=(q.get('p')||'').replace(/-/g,'+').replace(/_/g,'/'); pitch=b?JSON.parse(decodeURIComponent(escape(atob(b)))):null; }catch(e){ pitch=null; }
+document.title=ttl+' · LSU'; document.getElementById('ttl').textContent=ttl; document.getElementById('sub').textContent=sub;
+const v=document.getElementById('v'), c=document.getElementById('c'), msg=document.getElementById('msg'), angs=document.getElementById('angs');
+const ok=/^https:\/\/[a-z0-9.-]*sydexsports\.net\//i.test(base);   // only BATS clips
+const url=a=>base+a+'.mp4';
+function draw(){ if(!v.videoWidth){ return; } c.width=v.videoWidth; c.height=v.videoHeight; const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height);
+  if(show&&pitch){ try{ drawPanel(g,c.width,c.height,pitch); }catch(e){} } }
+function play(a){ ang=a; const t=v.currentTime||0; [...angs.children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.a===a));
+  msg.innerHTML=`Camera ${a}${a==='A'?' (center field)':''}. If the video doesn't start, <a href="${url(a)}" target="_blank" rel="noopener">open the clip directly</a>.`;
+  v.src=url(a); v.addEventListener('loadedmetadata',()=>{ if(t) try{ v.currentTime=Math.min(t,v.duration||t); }catch(_){} draw(); },{once:true}); v.play().catch(()=>{});
+  history.replaceState(null,'',location.pathname+'#'+(()=>{ q.set('a',a); return q.toString(); })()); }
+if(!ok){ msg.textContent='This link is missing its video. Open the pitch again from the site.'; }
+else{ angs.innerHTML='ABCDEF'.split('').map(a=>`<button type="button" data-a="${a}" title="Camera ${a}${a==='A'?' (center field)':''}">${a}</button>`).join('');
+  angs.onclick=e=>{ const b=e.target.closest('button'); if(b) play(b.dataset.a); };
+  v.addEventListener('loadedmetadata',draw); window.addEventListener('resize',draw);
+  document.getElementById('tog').onclick=e=>{ show=!show; e.target.textContent=show?'Overlay on':'Overlay off'; draw(); };
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(draw);
+  play(ang); }
+</script></body></html>
