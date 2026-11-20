@@ -116,7 +116,7 @@ function drawSeq(ctx,W,H,seq,{x1,y0,w,s,u,F}){
 }
 
 
-const CAMNM={A:'Center field',E:'RHH Open',F:'LHH Open'};
+const CAMNM={A:'Center field',D:'High Home',E:'RHH Open',F:'LHH Open'};
 addEventListener('hashchange',()=>location.reload());
 const q=new URLSearchParams(location.hash.slice(1));
 const base=q.get('v')||'', ttl=q.get('t')||'Pitch video', sub=q.get('s')||'';
