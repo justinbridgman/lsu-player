@@ -17,11 +17,32 @@ video{width:100%;display:block;max-height:calc(100vh - 120px)}
 canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .msg{margin-top:10px;color:var(--ink2);font-size:14px}.msg a{color:#c9b3ff}
 .tog{font:600 13px Barlow,sans-serif;background:none;border:1px solid var(--line);color:var(--ink2);border-radius:6px;padding:6px 10px;cursor:pointer}
+.lay{display:block}
+.lay.list{display:grid;grid-template-columns:250px 1fr;gap:12px;align-items:start}
+.lay.list .cards{display:flex;flex-direction:column;gap:8px;overflow:auto;max-height:calc(100vh - 90px);padding:2px}
+.lay:not(.list) .cards{display:none}
+.card{display:block;width:100%;text-align:left;font:inherit;color:var(--ink);background:#1d1830;border:1px solid var(--line);border-radius:6px;padding:9px 11px;cursor:pointer}
+.card:hover{border-color:var(--purple)}
+.card.on{background:rgba(122,79,192,.25);border-color:#b79bea;box-shadow:inset 3px 0 0 #b79bea}
+.card .r1,.card .r2{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--ink2)}
+.card .r1 b{font-size:14px;color:var(--ink)}
+.card .r3{font-size:12.5px;margin-top:6px;padding-top:6px;border-top:1px solid var(--line);color:var(--ink2);line-height:1.5}
+.card .r4{font-size:13px;font-weight:600;margin-top:6px;padding-top:6px;border-top:1px solid var(--line)}
+.card .r4 i{font-weight:400;color:var(--ink2)}
+.nav{display:none;align-items:center;gap:8px;font-size:13px;color:var(--ink2)}
+.lay.list~.x,.nav.on{display:flex}
+.nav button{font-size:15px;width:30px;height:28px;border:1px solid var(--line);border-radius:5px;background:#1d1830;color:var(--ink);cursor:pointer}
+.nav button:disabled{opacity:.35;cursor:default}
+.nov{display:grid;place-items:center;aspect-ratio:16/9;background:#000;color:#cfc8e2;text-align:center;font-size:14px;line-height:1.6;border-radius:6px}
+.angs button span{font-weight:500;font-size:11px;margin-left:4px;color:inherit;opacity:.8}
+@media (max-width:760px){.lay.list{grid-template-columns:1fr}.lay.list .cards{flex-direction:row;overflow-x:auto;max-height:none}.lay.list .card{flex:0 0 220px}}
 </style></head><body><div class="wrap">
 <div class="top"><div><h1 id="ttl">Pitch video</h1><div class="sub" id="sub"></div></div>
+<div class="nav" id="nav"><button type="button" id="prev" title="Previous">⏮</button><span id="pos"></span><button type="button" id="next" title="Next">⏭</button></div>
 <div class="angs" id="angs"></div><button class="tog" id="tog" type="button" title="Show or hide the pitch panel">Overlay on</button></div>
-<div class="stage"><video id="v" controls playsinline autoplay muted></video><canvas id="c"></canvas></div>
-<p class="msg" id="msg"></p>
+<div class="lay" id="lay"><div class="cards" id="cards"></div><div>
+<div class="stage" id="stage"><video id="v" controls playsinline autoplay muted></video><canvas id="c"></canvas></div><div class="nov" id="nov" hidden></div>
+<p class="msg" id="msg"></p></div></div>
 </div>
 <script>
 /* LSU pitch video player (2026-11-18): opened from the LSU Tigers Hitting Lab camera buttons. Everything comes from the link (after #):
@@ -118,25 +139,46 @@ function drawSeq(ctx,W,H,seq,{x1,y0,w,s,u,F}){
 
 const CAMNM={A:'Center field',D:'High Home',E:'RHH Open',F:'LHH Open'};
 addEventListener('hashchange',()=>location.reload());
+/* Two modes. One pitch: #v=&a=&t=&s=&p= (camera buttons on the site).
+   A list (2026-11-21, Stats-tab numbers such as 2B): #l=<base64url JSON {t, items:[{v,d,g,i,c,m,pt,r,p}]}>&a= : cards on the left, the video
+   on the right, cameras switch in place, and the next clip plays when one ends (same layout as the site's home run window). */
 const q=new URLSearchParams(location.hash.slice(1));
-const base=q.get('v')||'', ttl=q.get('t')||'Pitch video', sub=q.get('s')||'';
-let ang=(q.get('a')||'A').toUpperCase(), pitch=null, show=true;
-try{ const b=(q.get('p')||'').replace(/-/g,'+').replace(/_/g,'/'); pitch=b?JSON.parse(decodeURIComponent(escape(atob(b)))):null; }catch(e){ pitch=null; }
+const dec=b=>JSON.parse(decodeURIComponent(escape(atob(String(b).replace(/-/g,'+').replace(/_/g,'/')))));
+const okV=x=>/^https:\/\/[a-z0-9.-]*sydexsports\.net\//i.test(x||'');   // only BATS clips
+let L=null; try{ if(q.get('l')) L=dec(q.get('l')); }catch(e){ L=null; }
+const items=L?(L.items||[]):[{v:q.get('v')||'',p:(()=>{ try{ return q.get('p')?dec(q.get('p')):null; }catch(e){ return null; } })()}];
+const ttl=L?(L.t||'Clips'):(q.get('t')||'Pitch video'), sub=L?'':(q.get('s')||'');
+let ang=(q.get('a')||'A').toUpperCase(), cur=0, show=true;
 document.title=ttl+' · LSU'; document.getElementById('ttl').textContent=ttl; document.getElementById('sub').textContent=sub;
-const v=document.getElementById('v'), c=document.getElementById('c'), msg=document.getElementById('msg'), angs=document.getElementById('angs');
-const ok=/^https:\/\/[a-z0-9.-]*sydexsports\.net\//i.test(base);   // only BATS clips
-const url=a=>base+a+'.mp4';
-function draw(){ if(!v.videoWidth){ return; } c.width=v.videoWidth; c.height=v.videoHeight; const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height);
-  if(show&&pitch){ try{ drawPanel(g,c.width,c.height,pitch); }catch(e){} } }
-function play(a){ ang=a; const t=v.currentTime||0; [...angs.children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.a===a));
-  msg.innerHTML=`Camera ${a}${CAMNM[a]?' ('+CAMNM[a]+')':''}. If the video doesn't start, <a href="${url(a)}" target="_blank" rel="noopener">open the clip directly</a>.`;
+const v=document.getElementById('v'), c=document.getElementById('c'), msg=document.getElementById('msg'), angs=document.getElementById('angs'), cards=document.getElementById('cards'), nov=document.getElementById('nov'), stage=document.getElementById('stage');
+const esc=x=>String(x==null?'':x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const it=()=>items[cur]||{}, url=a=>it().v+a+'.mp4';
+function draw(){ if(!v.videoWidth) return; c.width=v.videoWidth; c.height=v.videoHeight; const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height);
+  if(show&&it().p){ try{ drawPanel(g,c.width,c.height,it().p); }catch(e){} } }
+function play(a,keepTime){ ang=a; const t=keepTime?(v.currentTime||0):0; [...angs.children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.a===a));
+  if(!okV(it().v)){ v.pause(); v.removeAttribute('src'); stage.hidden=true; nov.hidden=false; nov.innerHTML='<div><b>No BATS video for this one.</b><br>That game has no BATS links on the site yet.</div>'; msg.textContent=''; return; }
+  stage.hidden=false; nov.hidden=true;
+  msg.innerHTML=`Camera ${a}${CAMNM[a]?' ('+CAMNM[a]+')':''}. If the video doesn't start, <a href="${esc(url(a))}" target="_blank" rel="noopener">open the clip directly</a>.`;
   v.src=url(a); v.addEventListener('loadedmetadata',()=>{ if(t) try{ v.currentTime=Math.min(t,v.duration||t); }catch(_){} draw(); },{once:true}); v.play().catch(()=>{});
   history.replaceState(null,'',location.pathname+'#'+(()=>{ q.set('a',a); return q.toString(); })()); }
-if(!ok){ msg.textContent='This link is missing its video. Open the pitch again from the site.'; }
-else{ angs.innerHTML='ABCDEF'.split('').map(a=>`<button type="button" data-a="${a}" title="Camera ${a}${CAMNM[a]?' ('+CAMNM[a]+')':''}">${a}</button>`).join('');
-  angs.onclick=e=>{ const b=e.target.closest('button'); if(b) play(b.dataset.a); };
+function card(x,i){ return `<button class="card${i===cur?' on':''}" data-i="${i}"><div class="r1"><b>${esc(x.d)}</b><span>${esc(x.g)}</span></div><div class="r2"><span>${esc(x.i)}</span><span>${esc(x.c)}</span></div>
+  <div class="r3">${esc(x.m)}<br>${esc(x.pt)}</div><div class="r4">${esc(x.r)}${okV(x.v)?'':' <i>· no video</i>'}</div></button>`; }
+function go(i){ cur=Math.max(0,Math.min(items.length-1,i));
+  if(L){ cards.innerHTML=items.map(card).join(''); const on=cards.querySelector('.card.on'); if(on) on.scrollIntoView({block:'nearest'});
+    document.getElementById('pos').textContent=(cur+1)+' of '+items.length; document.getElementById('prev').disabled=cur<=0; document.getElementById('next').disabled=cur>=items.length-1; }
+  play(ang,false); }
+if(!items.length||(!L&&!okV(items[0].v))){ msg.textContent='This link is missing its video. Open the pitch again from the site.'; }
+else{
+  angs.innerHTML='ABCDEF'.split('').map(a=>`<button type="button" data-a="${a}" title="Camera ${a}${CAMNM[a]?' ('+CAMNM[a]+')':''}">${a}${L&&CAMNM[a]?'<span>'+esc(CAMNM[a])+'</span>':''}</button>`).join('');
+  angs.onclick=e=>{ const b=e.target.closest('button'); if(b) play(b.dataset.a,true); };
   v.addEventListener('loadedmetadata',draw); window.addEventListener('resize',draw);
   document.getElementById('tog').onclick=e=>{ show=!show; e.target.textContent=show?'Overlay on':'Overlay off'; draw(); };
   if(document.fonts&&document.fonts.ready) document.fonts.ready.then(draw);
-  play(ang); }
+  if(L){ document.getElementById('lay').classList.add('list'); document.getElementById('nav').classList.add('on');
+    cards.onclick=e=>{ const b=e.target.closest('.card'); if(b) go(+b.dataset.i); };
+    document.getElementById('prev').onclick=()=>go(cur-1); document.getElementById('next').onclick=()=>go(cur+1);
+    v.addEventListener('ended',()=>{ const n=items.findIndex((x,j)=>j>cur&&okV(x.v)); if(n>=0) go(n); });   // plays straight through the list
+    document.addEventListener('keydown',e=>{ if(e.key==='ArrowDown'){ go(cur+1); e.preventDefault(); } if(e.key==='ArrowUp'){ go(cur-1); e.preventDefault(); } });
+    go(Math.max(0,items.findIndex(x=>okV(x.v)))); }
+  else go(0); }
 </script></body></html>
