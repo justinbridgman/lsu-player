@@ -34,6 +34,15 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .lay.list~.x,.nav.on{display:flex}
 .nav button{font-size:15px;width:30px;height:28px;border:1px solid var(--line);border-radius:5px;background:#1d1830;color:var(--ink);cursor:pointer}
 .nav button:disabled{opacity:.35;cursor:default}
+.pmx{margin-top:8px;border:1px solid var(--line);border-radius:6px;background:#1d1830;line-height:1.3}
+.pmx summary{cursor:pointer;padding:6px 10px;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}
+.pmx .pmrow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line)}
+.pmx .pmrow div{padding:6px 8px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px;min-width:0}
+.pmx .pmrow div:last-child{border-right:0}
+.pmx .pmrow span{font-weight:600;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2);white-space:nowrap}
+.pmx .pmrow b{font-weight:700;font-size:18px;white-space:nowrap}
+.pmx .pmrow i{font-weight:500;font-size:11px;font-style:normal;color:var(--ink2)}
+@media (max-width:640px){.pmx .pmrow{grid-template-columns:repeat(4,1fr)}}
 .nov[hidden]{display:none}
 .nov{display:grid;place-items:center;aspect-ratio:16/9;background:#000;color:#cfc8e2;text-align:center;font-size:14px;line-height:1.6;border-radius:6px}
 .angs button span{font-weight:500;font-size:11px;margin-left:4px;color:inherit;opacity:.8}
@@ -44,7 +53,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 <div class="angs" id="angs"></div><button class="tog" id="tog" type="button" title="Show or hide the pitch panel">Overlay on</button><img class="logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABWBAMAAACNyI1rAAAAMFBMVEUAAAD5+Pr+zyRPJHRMJ479tiSUZFf+zyeunMr+8Q3lrzdtUKXFuNj+1yf761m2hEqf2WKaAAAAEHRSTlMA//X9/Qb+YP4L/v7/qAv/JeQ9+QAAA+1JREFUeNrdll9MW1Ucxz+3f6CXKrQwnbhEKok4JwsNaGAhGh62B6MhNzEs/okO94JmyYaNSadxpLroRkzI9WGZfXDTLY7EjYREJ1OI4gO+GDZgkslwN93iIsm2Xiy0t12L9aG3vdfbFp580N/Dze+c87m/c873nt/vXKER3ZSIjxLmuLc952QUSppD+2IUIDVAGYAzuwEqHywD2NjANgRoco9PeD3jX7cSKTkutLRzSrQ3+jMnymxzZQL/As0TZdfwriIBKLdLB8C2V3divjIRwmEARLncFH1jAGj8a0L9JwCHyT82aR4YLgKc+zaI8Oxxs9w2WbMA4f2d5jedRRG0fR/7TcBqEXCofq3HGH/8LSswMDW0OGgAAesixV+eXvKstwutf+eIezTfe14usc3himRf3p/2llSS9i4Se0iPMrRgAkYL6yF5EOH0ct31s2bBrm0fBdg+o3d8r5Dy24OGJNuyiQ7vpppsttO7qeZAduU97ze+gL2t7VFRnyLj7PJQ6d+Fk0r//C6eAmhQTVKP9EJiGvTnNPBID9jkErvQrfqNMgcmb7HwZKbLoYsiNG35KOfFJcYBeOdqBLGQaULTtdyOhCsV9gYA6n7DfbmQ646MfvZ4DS73AvClx+Yr5LoQ1J2Xd1RUPZbv/aFBkfQvJxQkFSuMZdofikZj+hT5U7RW+4pUANa8yzEsET49vCSaQjSpzTv/AYja3NC5QuLEpdbfFywR5EONhmgLzsBJ6xTikRsXQlM5fcKtkcBtGUA7JxiZ4tj/lV7RbYn5wI+5S8II65TSg1cDUwA8CSTnAaoMIH0WiK+TvMcjIG02BuIWQFr0h1xkgymZYPInoCaYkiv7M4pdB7bWnxcqOqMXz4jZsdhd+60dNy5eWc788esDRgla65GSfcEOaNFW49B3x4PjkjppiPPnoL37INVA0gUkq4DP5k1Hzg0cZQg4GvIACcA9aALiMDvLtJfZQfHn/KEXbxrAJa+rB7pl4QNIyf4DOSVr81JLjdHPPebPvXrqzRl7+IV0PsK3jvqsSb+WPVFLpdVWnuOkqmpp3JqqrmgDA1apnce2HW6Dae9quo21pYhsrdXpZy6oqqp2QIuqxu5hsqiYn29WFEVKAt2KMhcprvbp9wEfuYfoK3EdvB2NnogAVEejR0plt1aL1AgQq/1f33qFLHyxC8bWAbThYSBUHrjZs8EUIwC8tLkk4IK/cr999sqSQBKXXlhJ9GZ6i4Enrqd2Fxqn7z5vVJic3Wl7eKbQqGpYnbNEEOvm9hqtT9RovzWC6Lh/a7/upz68tRgKWdewct+WwpX2+qsul3WRmhwwfvu+q44l+RvXDkLAp20ktQAAAABJRU5ErkJggg==" alt="LSU"></div>
 <div class="lay" id="lay"><div class="cards" id="cards"></div><div>
 <div class="stage" id="stage"><video id="v" controls playsinline autoplay muted></video><canvas id="c"></canvas></div><div class="nov" id="nov" hidden></div>
-<p class="msg" id="msg"></p></div></div>
+<div id="pmx"></div><p class="msg" id="msg"></p></div></div>
 </div>
 <script>
 /* LSU pitch video player (2026-11-18): opened from the LSU Tigers Hitting Lab camera buttons. Everything comes from the link (after #):
@@ -155,6 +164,14 @@ document.title=ttl+' · LSU'; document.getElementById('ttl').textContent=ttl; do
 const v=document.getElementById('v'), c=document.getElementById('c'), msg=document.getElementById('msg'), angs=document.getElementById('angs'), cards=document.getElementById('cards'), nov=document.getElementById('nov'), stage=document.getElementById('stage');
 const esc=x=>String(x==null?'':x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const it=()=>items[cur]||{}, url=a=>it().v+a+'.mp4';
+/* Pitch metrics drop-down under the video (2026-11-21), same row as the site: Velocity, Spin, IVB, HB, Extension, Rel Height, Rel Side.
+   List items carry mx (7 values); a single pitch carries m (base64 JSON). Open / closed is remembered. */
+const PMXL=[['Velocity','mph'],['Spin','rpm'],['IVB','in'],['HB','in'],['Extension','ft'],['Rel Height','ft'],['Rel Side','ft']];
+let pmxOpen=false; try{ pmxOpen=localStorage.getItem('pmxOpen')==='1'; }catch(e){}
+const mxOf=()=>{ if(it().mx) return it().mx; if(!L&&q.get('m')){ try{ return dec(q.get('m')); }catch(e){} } return null; };
+function pmx(){ const el=document.getElementById('pmx'), m=mxOf(); if(!m){ el.innerHTML=''; return; } const t=(it().p&&it().p.type)||'';
+  el.innerHTML=`<details class="pmx"${pmxOpen?' open':''}><summary>Pitch metrics${t?' · '+esc(t):''}</summary><div class="pmrow">`+PMXL.map(([l,u],i)=>`<div><span>${l}</span><b>${m[i]==null?'–':esc(m[i])}<i>${m[i]==null?'':' '+u}</i></b></div>`).join('')+'</div></details>';
+  el.querySelector('details').addEventListener('toggle',e=>{ pmxOpen=e.target.open; try{ localStorage.setItem('pmxOpen',pmxOpen?'1':'0'); }catch(_){} }); }
 function fitCards(){ if(!L) return; const h=(stage.hidden?nov:stage).getBoundingClientRect().height; if(h>40) cards.style.maxHeight=Math.round(h)+'px'; }   // card list ends at the bottom of the video (user, 2026-11-21)
 function draw(){ fitCards(); if(!v.videoWidth) return; c.width=v.videoWidth; c.height=v.videoHeight; const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height);
   if(show&&it().p){ try{ drawPanel(g,c.width,c.height,it().p); }catch(e){} } }
@@ -169,7 +186,7 @@ function card(x,i){ return `<button class="card${i===cur?' on':''}" data-i="${i}
 function go(i){ cur=Math.max(0,Math.min(items.length-1,i));
   if(L){ cards.innerHTML=items.map(card).join(''); const on=cards.querySelector('.card.on'); if(on) on.scrollIntoView({block:'nearest'});
     document.getElementById('pos').textContent=(cur+1)+' of '+items.length; document.getElementById('prev').disabled=cur<=0; document.getElementById('next').disabled=cur>=items.length-1; }
-  play(ang,false); fitCards(); }
+  play(ang,false); pmx(); fitCards(); }
 if(!items.length||(!L&&!okV(items[0].v))){ msg.textContent='This link is missing its video. Open the pitch again from the site.'; }
 else{
   angs.innerHTML='ABCDEF'.split('').map(a=>`<button type="button" data-a="${a}" title="Camera ${a}${CAMNM[a]?' ('+CAMNM[a]+')':''}">${a}${L&&CAMNM[a]?'<span>'+esc(CAMNM[a])+'</span>':''}</button>`).join('');
