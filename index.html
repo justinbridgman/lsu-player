@@ -155,7 +155,8 @@ document.title=ttl+' · LSU'; document.getElementById('ttl').textContent=ttl; do
 const v=document.getElementById('v'), c=document.getElementById('c'), msg=document.getElementById('msg'), angs=document.getElementById('angs'), cards=document.getElementById('cards'), nov=document.getElementById('nov'), stage=document.getElementById('stage');
 const esc=x=>String(x==null?'':x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const it=()=>items[cur]||{}, url=a=>it().v+a+'.mp4';
-function draw(){ if(!v.videoWidth) return; c.width=v.videoWidth; c.height=v.videoHeight; const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height);
+function fitCards(){ if(!L) return; const h=(stage.hidden?nov:stage).getBoundingClientRect().height; if(h>40) cards.style.maxHeight=Math.round(h)+'px'; }   // card list ends at the bottom of the video (user, 2026-11-21)
+function draw(){ fitCards(); if(!v.videoWidth) return; c.width=v.videoWidth; c.height=v.videoHeight; const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height);
   if(show&&it().p){ try{ drawPanel(g,c.width,c.height,it().p); }catch(e){} } }
 function play(a,keepTime){ ang=a; const t=keepTime?(v.currentTime||0):0; [...angs.children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.a===a));
   if(!okV(it().v)){ v.pause(); v.removeAttribute('src'); stage.hidden=true; nov.hidden=false; nov.innerHTML='<div><b>No BATS video for this one.</b><br>That game has no BATS links on the site yet.</div>'; msg.textContent=''; return; }
@@ -168,7 +169,7 @@ function card(x,i){ return `<button class="card${i===cur?' on':''}" data-i="${i}
 function go(i){ cur=Math.max(0,Math.min(items.length-1,i));
   if(L){ cards.innerHTML=items.map(card).join(''); const on=cards.querySelector('.card.on'); if(on) on.scrollIntoView({block:'nearest'});
     document.getElementById('pos').textContent=(cur+1)+' of '+items.length; document.getElementById('prev').disabled=cur<=0; document.getElementById('next').disabled=cur>=items.length-1; }
-  play(ang,false); }
+  play(ang,false); fitCards(); }
 if(!items.length||(!L&&!okV(items[0].v))){ msg.textContent='This link is missing its video. Open the pitch again from the site.'; }
 else{
   angs.innerHTML='ABCDEF'.split('').map(a=>`<button type="button" data-a="${a}" title="Camera ${a}${CAMNM[a]?' ('+CAMNM[a]+')':''}">${a}${L&&CAMNM[a]?'<span>'+esc(CAMNM[a])+'</span>':''}</button>`).join('');
